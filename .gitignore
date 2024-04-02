@@ -1,0 +1,19 @@
+# 依赖目录
+node_modules/
+
+# 环境配置文件
+.env
+
+# 编译产物目录
+artifacts/
+cache/
+
+# Hardhat网络信息
+hardhat.config.local.js
+
+# 日志文件
+*.log
+
+# 系统生成的文件
+.DS_Store
+Thumbs.db
