@@ -72,18 +72,20 @@
 ### 2.1 安装OpenZeppelin 合约库
 
 ```shell
-npm install @openzeppelin/contracts
+npm install @openzeppelin/contracts-upgradeable
 ```
 
-### 2.2 部署逻辑合约
+### 2.2 可升级合约
 
-我们定义一个简单的逻辑合约，这个合约包含一些基础逻辑，比如存储一个数值并允许更改它：
+我们定义一个简单的可升级合约，这个合约包含一些基础逻辑，比如存储一个数值并允许更改它：
 
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract LogicContract {
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+contract Upgradeable is Initializable {
     uint256 public value;
 
     function initialize(uint256 _value) public {
@@ -96,35 +98,33 @@ contract LogicContract {
 }
 ```
 
-### 2.3 代理合约
+### 2.3 部署可升级合约
 
-我们将使用OpenZeppelin来实现一个代理合约。为简化示例，这里我们将展示如何使用OpenZeppelin的`TransparentUpgradeableProxy`：
+#### 2.3.1 安装@openzeppelin/hardhat-upgrades
 
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+```shell
+npm install @openzeppelin/hardhat-upgrades
 ```
 
-实际上，不需要手动编写代理合约的Solidity代码，因为OpenZeppelin已经提供了`TransparentUpgradeableProxy`合约。部署代理合约的过程将在部署脚本中完成。
+#### 2.3.2 在hardhat.config.js中引入@openzeppelin/hardhat-upgrades插件
 
-### 2.4 部署脚本
+打开你的`hardhat.config.js`文件，确保你已经引入了`@openzeppelin/hardhat-upgrades`插件。如果没有，请添加如下代码：
+
+```javascript
+require('@openzeppelin/hardhat-upgrades');
+```
+
+#### 2.3.3 编写部署脚本
 
 ```javascript
 const { ethers, upgrades } = require("hardhat");
 
 async function main() {
-    // 部署逻辑合约
-    const logicContractFactory = await ethers.getContractFactory("LogicContract");
-    const logicContract = await logicContractFactory.deploy();
-    await logicContract.deployed();
-    console.log("logicContract deployed to:", logicContract.address);
-
-    // 部署代理合约
-    const proxyContract = await upgrades.deployProxy(logicContractFactory, [42], {initializer: "initialize"});
-    await proxyContract.deployed();
-    console.log("proxyContract deployed to:", proxyContract.address);
+    // 部署可升级合约
+    const upgradeableFactory = await ethers.getContractFactory("Upgradeable");
+    const upgradeableContract = await upgrades.deployProxy(upgradeableFactory, [42], {initializer: "initialize"});
+    await upgradeableContract.deployed();
+    console.log("upgradeableContract deployed to:", upgradeableContract.address);
 }
 
 main().then(() => process.exit(0)).catch(error => {
@@ -133,28 +133,44 @@ main().then(() => process.exit(0)).catch(error => {
 });
 ```
 
-这个脚本先部署了`LogicContract`，然后部署了代理合约，并指定了初始参数和初始化函数。部署完成后，你将拥有一个可通过代理合约访问和升级的逻辑合约。
+这个脚本使用Hardhat的`upgrades`插件部署了一个可升级的代理合约，并且初始化了存储的值为`42`。
 
-### 2.5  编写新版本的逻辑合约
+#### 2.3.4 运行部署脚本
+
+```shell
+npx hardhat run scripts/deploy-upgradeable.js --network bsctestnet
+```
+
+### 2.4  可升级合约V2
+
+新版本`UpgradeableV2`在末尾添加了一个新的状态变量`name`，这是兼容存储布局的一个示例。当使用 OpenZeppelin 插件进行升级时，它会帮助确保这种兼容性。
 
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract LogicContractV2 {
-    uint256 public value;
-    string public newValue; // 新增状态变量
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-    function initialize(uint256 _value， string memory _newValue) public {
+contract UpgradeableV2 is Initializable {
+    uint256 public value;
+    string public name;
+
+    function initialize(uint256 _value, string memory _name) public {
         value = _value;
-        newValue = _newValue;
+        name = _name;
     }
 
-		// 其他函数...    
+    function setValue(uint256 _value) public {
+        value = _value;
+    }
+
+    function setname(string _name) {
+        name = _name;
+    }
 }
 ```
 
-### 2.6 执行合约升级
+### 2.5 部署可升级合约V2
 
 使用 OpenZeppelin Hardhat 插件的 `upgradeProxy` 函数来升级现有的代理合约实例到新版本的逻辑合约。
 
@@ -162,17 +178,16 @@ contract LogicContractV2 {
 const { ethers, upgrades } = require("hardhat");
 
 async function main() {
-    const proxyContractAddress = "YOUR_DEPLOYED_PROXY_ADDRESS";
-    const logicContractV2Factory = await ethers.getContractFactory("LogicContractV2");
-
-    const logicContractV2 = await upgrades.upgradeProxy(proxyContractAddress, logicContractV2Factory);
-    console.log("MyContract upgraded to V2 at:", myContractV2.address);
+    const upgradeableContractAddress = "YOUR_DEPLOYED_UPGRADEABLE_CONTRACT_ADDRESS";
+    const upgradeableV2Factory = await ethers.getContractFactory("UpgradeableV2");
+    const upgradeableV2Contract = await upgrades.upgradeProxy(upgradeableContractAddress, upgradeableV2Factory);
+    console.log("UpgrateableContract upgraded to V2 at:", upgradeableV2Contract.address);
 }
 
 main();
 ```
 
-### 2.7 注意事项
+### 2.6 注意事项
 
 - 确保新版本的逻辑合约兼容旧版本的存储布局。
 - 进行任何升级之前，应在测试网络上充分测试新的合约版本。

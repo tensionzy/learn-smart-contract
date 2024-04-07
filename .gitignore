@@ -17,3 +17,6 @@ hardhat.config.local.js
 # 系统生成的文件
 .DS_Store
 Thumbs.db
+
+package-lock.json
+.openzeppelin
