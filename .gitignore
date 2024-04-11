@@ -20,3 +20,4 @@ Thumbs.db
 
 package-lock.json
 .openzeppelin
+test-accounts.json

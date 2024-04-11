@@ -3,12 +3,11 @@ const { expect } = require("chai");
 const { JsonRpcProvider, FetchRequest } = require('ethers');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 require('dotenv').config();
+const { PROXY_URL, PRIVATE_KEY, FETCH_REQUEST } = process.env;
 
 // 代理服务器地址, 中国需要通过代理连接到BSC测试网
-const proxyUrl = 'http://127.0.0.1:7890'; 
-// BSC测试网
-const fetchReq = new FetchRequest("https://data-seed-prebsc-1-s1.binance.org:8545/");
-fetchReq.getUrlFunc = FetchRequest.createGetUrlFunc({ agent: new HttpsProxyAgent(proxyUrl) });
+const fetchReq = new FetchRequest(FETCH_REQUEST);
+fetchReq.getUrlFunc = FetchRequest.createGetUrlFunc({ agent: new HttpsProxyAgent(PROXY_URL) });
 const provider = new JsonRpcProvider(fetchReq);
 const contractAddress = "0xEc3Fe840fE40F1Df344eA16B44e1fB19A04a31e4";
 const contractABI = [
@@ -23,7 +22,6 @@ const contractABI = [
 describe("contract interaction", function() {
   describe("mint token", function () {
     it("mint 1000 KuiToken", async function() {
-      const { PRIVATE_KEY } = process.env;
       const signer = new ethers.Wallet(PRIVATE_KEY, provider);
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
       const owner = await contract.owner();
@@ -35,7 +33,6 @@ describe("contract interaction", function() {
   
   describe("contract owner address check", function () {
     it("should set the right owner", async function () {
-      const { PRIVATE_KEY } = process.env;
       const signer = new ethers.Wallet(PRIVATE_KEY, provider);
       const walletAddress = await signer.getAddress();
 
